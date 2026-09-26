@@ -40,6 +40,10 @@ class UMNScraper(BaseScraper):
             gen_ed = cells[3].strip() if len(cells) > 3 else None
             if not award or award.lower().startswith("no credit"):
                 continue
+            # Rows keyed on an "AB subscore" condition are conditional awards that
+            # belong to Calculus AB, not to the exam in this row; skip them here.
+            if "subscore" in score_s.lower():
+                continue
             scores = [s for s in parse_scores(score_s) if s >= 3]
             if not scores:
                 continue

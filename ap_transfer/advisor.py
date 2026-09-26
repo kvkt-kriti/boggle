@@ -44,19 +44,21 @@ def recommend(
     school: str,
     *,
     subject: str | None = None,
-    min_score: int | None = None,
+    expected_score: int | None = None,
 ) -> list[Recommendation]:
     """Recommend AP exams worth taking for a school (optionally by subject).
 
     Results are grouped per AP exam and ranked by the credit hours awarded, so a
-    student sees the highest-value exams first.
+    student sees the highest-value exams first. When ``expected_score`` is given,
+    only awards a student could earn at that score (i.e. requiring that score or
+    lower) are considered.
     """
     school = school.upper()
     pool = [r for r in rows if r.school == school]
     if subject:
         pool = [r for r in pool if _matches_subject(r, subject)]
-    if min_score is not None:
-        pool = [r for r in pool if r.score >= min_score]
+    if expected_score is not None:
+        pool = [r for r in pool if r.score <= expected_score]
 
     by_exam: dict[str, list[Equivalency]] = defaultdict(list)
     for r in pool:

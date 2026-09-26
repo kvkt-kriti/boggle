@@ -71,8 +71,11 @@ the subject area of a major:
 ```bash
 python -m ap_transfer recommend --school UF
 python -m ap_transfer recommend --school GT --subject math
-python -m ap_transfer recommend --school UGA --subject biology --min-score 4
+python -m ap_transfer recommend --school UGA --subject biology --score 4
 ```
+
+`--score N` is the AP score you expect to earn; results are limited to awards you
+would actually qualify for at that score.
 
 Compare how one AP exam transfers across every school:
 

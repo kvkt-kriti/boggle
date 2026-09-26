@@ -62,9 +62,12 @@ _register("Psychology", "psych")
 _register("Human Geography", "geography human", "geog human")
 _register("US Government and Politics", "united states government and politics",
           "government and politics u s", "government and politics us", "us gov",
-          "gov and pol u s", "u s government and politics")
+          "gov and pol u s", "u s government and politics",
+          "govt and pol u s", "govt and pol united states",
+          "government and politics united states")
 _register("Comparative Government and Politics", "government and politics comparative",
-          "comparative government", "gov and pol comp", "comparative government and politics")
+          "comparative government", "gov and pol comp", "comparative government and politics",
+          "govt and pol comparative")
 _register("US History", "united states history", "u s history", "us history",
           "united states american history")
 _register("European History", "euro history")
@@ -137,10 +140,32 @@ _NO_CREDIT_MARKERS = (
 )
 
 
+def _densify(text: str, subject_pattern: str) -> str:
+    """Expand "MATH 151 and 152" into "MATH 151 MATH 152".
+
+    Universities often list a subject once followed by several bare course
+    numbers joined by commas / "and" / "&". This attaches the subject to each
+    number so every course is captured, while leaving parentheticals like
+    "(8 credits)" untouched.
+    """
+    pat = re.compile(
+        rf"({subject_pattern})\s?(\d{{3,4}}[A-Za-z]?)"
+        rf"((?:\s*(?:,|and|&)\s*\d{{2,4}}[A-Za-z]?)+)"
+    )
+
+    def repl(m: "re.Match[str]") -> str:
+        subject, first, rest = m.group(1), m.group(2), m.group(3)
+        nums = re.findall(r"\d{2,4}[A-Za-z]?", rest)
+        return f"{subject} {first} " + " ".join(f"{subject} {n}" for n in nums)
+
+    return pat.sub(repl, text)
+
+
 def extract_courses(text: str) -> list[str]:
     """Best-effort extraction of course codes from an award string."""
     if not text:
         return []
+    text = _densify(text, r"[A-Z]{2,5}")
     found = _COURSE_RE.findall(text)
     # normalize internal spacing ("MAC2311" -> "MAC 2311")
     out: list[str] = []
@@ -156,7 +181,7 @@ def extract_courses(text: str) -> list[str]:
 # Title-cased course names such as "Math 1271", "Art History 1001",
 # "Computer Science 1XXX" (used by e.g. University of Minnesota).
 _COURSE_TITLECASE_RE = re.compile(
-    r"in\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)\s+(\d[\dX]{2,3}[A-Za-z]?)"
+    r"([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)\s+(\d[\dX]{2,3}[A-Za-z]?)"
 )
 
 
@@ -164,6 +189,7 @@ def extract_courses_titlecase(text: str) -> list[str]:
     """Extract "Subject 1234" style course names (title-cased subjects)."""
     if not text:
         return []
+    text = _densify(text, r"[A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)*")
     out: list[str] = []
     seen: set[str] = set()
     for subject, number in _COURSE_TITLECASE_RE.findall(text):

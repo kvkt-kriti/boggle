@@ -18,9 +18,21 @@ def _ensure_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def dedupe(rows: Iterable[Equivalency]) -> list[Equivalency]:
+    """Drop exact-duplicate equivalencies, preserving first-seen order."""
+    seen: set[tuple] = set()
+    out: list[Equivalency] = []
+    for r in rows:
+        key = (r.school, r.ap_exam, r.score, tuple(r.courses), r.credits, r.award_raw)
+        if key not in seen:
+            seen.add(key)
+            out.append(r)
+    return out
+
+
 def save_json(rows: Iterable[Equivalency], path: Path = JSON_PATH) -> Path:
     _ensure_dir()
-    payload = [r.to_dict() for r in rows]
+    payload = [r.to_dict() for r in dedupe(rows)]
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return path
 
@@ -34,6 +46,7 @@ def load_json(path: Path = JSON_PATH) -> list[Equivalency]:
 
 def save_sqlite(rows: Iterable[Equivalency], path: Path = DB_PATH) -> Path:
     _ensure_dir()
+    rows = dedupe(rows)
     conn = sqlite3.connect(path)
     try:
         conn.execute("DROP TABLE IF EXISTS equivalencies")

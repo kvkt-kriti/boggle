@@ -59,7 +59,7 @@ def _fmt_courses(courses: list[str], award: str) -> str:
 def _cmd_recommend(args: argparse.Namespace) -> int:
     rows = _load_or_exit()
     recs = advisor.recommend(
-        rows, args.school, subject=args.subject, min_score=args.min_score
+        rows, args.school, subject=args.subject, expected_score=args.score
     )
     if not recs:
         print("No matching AP exams found.")
@@ -68,6 +68,8 @@ def _cmd_recommend(args: argparse.Namespace) -> int:
     header = f"AP exams worth taking for {name} ({args.school.upper()})"
     if args.subject:
         header += f" — subject filter: '{args.subject}'"
+    if args.score:
+        header += f" — expected score: {args.score}"
     print(header + "\n")
     print(f"  {'AP Exam':40} {'MinScore':8} {'Best':5} {'Credits':7} Courses")
     print("  " + "-" * 92)
@@ -77,7 +79,8 @@ def _cmd_recommend(args: argparse.Namespace) -> int:
             f"  {r.ap_exam[:40]:40} {r.min_score:^8} {r.best_score:^5} "
             f"{cred:^7} {_fmt_courses(r.courses, r.award_raw)}"
         )
-    print(f"\n  {len(recs)} exam(s). Source: {recs[0].award_raw and rows[0].source_url}")
+    source = next((r.source_url for r in rows if r.school == args.school.upper()), "")
+    print(f"\n  {len(recs)} exam(s). Source: {source}")
     return 0
 
 
@@ -121,7 +124,10 @@ def build_parser() -> argparse.ArgumentParser:
     sr = sub.add_parser("recommend", help="Recommend AP exams for a school")
     sr.add_argument("--school", required=True, help="School code, e.g. UF")
     sr.add_argument("--subject", help="Filter by subject/major keyword, e.g. 'math'")
-    sr.add_argument("--min-score", type=int, help="Only awards achievable at this score or lower")
+    sr.add_argument(
+        "--score", type=int, choices=[1, 2, 3, 4, 5],
+        help="The AP score you expect to earn; shows only awards you'd qualify for",
+    )
     sr.set_defaults(func=_cmd_recommend)
 
     se = sub.add_parser("exam", help="Compare one AP exam across all schools")

@@ -67,11 +67,28 @@ def test_uga_calculus_bc_sums_credits_and_drops_exemptions():
     assert r.credits == 8.0
 
 
+def test_uga_grouped_courses_all_captured():
+    # "BIOL 1107 + BIOL 1107L (4 credit hours) and BIOL 1108 + BIOL 1108L
+    # (4 credit hours)" must keep all four courses and sum to 8 credits.
+    r = _find(parse(UGAScraper), "Biology", 5)
+    assert r is not None
+    assert r.courses == ["BIOL 1107", "BIOL 1107L", "BIOL 1108", "BIOL 1108L"]
+    assert r.credits == 8.0
+
+
 def test_tamu_bare_credit_hours_parsed():
     r = _find(parse(TAMUScraper), "African American Studies", 3)
     assert r is not None
     assert r.courses == ["AFST 289"]
     assert r.credits == 3.0
+
+
+def test_tamu_multi_course_expansion():
+    # "MATH 151 and 152" must expand to two courses.
+    r = _find(parse(TAMUScraper), "Calculus BC", 4)
+    assert r is not None
+    assert r.courses == ["MATH 151", "MATH 152"]
+    assert r.credits == 8.0
 
 
 def test_gatech_inline_score_and_course():
@@ -91,10 +108,12 @@ def test_rutgers_expands_score_list():
 
 
 def test_umn_titlecase_courses():
+    # "8 credits in Math 1271, 1272" must expand to two title-cased courses,
+    # and the AB-subscore conditional row must not pollute Calculus BC.
     r = _find(parse(UMNScraper), "Calculus BC", 5)
     assert r is not None
-    assert r.courses == ["Math 1271"]
-    assert r.credits == 4.0
+    assert r.courses == ["Math 1271", "Math 1272"]
+    assert r.credits == 8.0
 
 
 def test_normalize_exam_aliases():

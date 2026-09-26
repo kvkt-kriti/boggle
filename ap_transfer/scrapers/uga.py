@@ -12,21 +12,34 @@ from ..models import Equivalency
 from ..normalize import extract_courses, extract_credits
 from .base import BaseScraper
 
-# Matches "MATH 2250 (4 credit hours)" pairs; UGA lists 0-credit placement
-# exemptions alongside real credit, so we sum credits and drop 0-credit courses.
-_PAIR_RE = re.compile(r"([A-Z]{2,5}\s?\d{3,4}[A-Za-z]?)\s*\((\d+)\s*credit", re.I)
+# UGA awards look like "BIOL 1107 + BIOL 1107L (4 credit hours) and BIOL 1108 +
+# BIOL 1108L (4 credit hours)". They also list 0-credit placement exemptions.
+# We split on each "(N credit hours)" marker so every course in a credited
+# segment is captured, sum the credit hours, and drop 0-credit exemptions.
+_SPLIT_RE = re.compile(r"\((\d+)\s*credit[^)]*\)", re.I)
 
 
 def _parse_award(award: str) -> tuple[list[str], float | None]:
-    pairs = _PAIR_RE.findall(award)
-    if not pairs:
+    parts = _SPLIT_RE.split(award)
+    if len(parts) < 3:  # no "(N credit hours)" markers
         return extract_courses(award), extract_credits(award)
-    courses = [re.sub(r"([A-Z]{2,5})\s?(\d)", r"\1 \2", c).strip()
-               for c, n in pairs if int(n) > 0]
-    total = float(sum(int(n) for _, n in pairs))
-    if not courses:  # all exemptions (0 credit); keep names for context
-        courses = [re.sub(r"([A-Z]{2,5})\s?(\d)", r"\1 \2", c).strip() for c, _ in pairs]
-    return courses, total
+    courses: list[str] = []
+    seen: set[str] = set()
+    total = 0
+    # parts = [text0, cred0, text1, cred1, ..., tail]
+    for i in range(0, len(parts) - 1, 2):
+        segment_text = parts[i]
+        credit = int(parts[i + 1])
+        total += credit
+        if credit <= 0:
+            continue  # placement/exemption only
+        for c in extract_courses(segment_text):
+            if c not in seen:
+                seen.add(c)
+                courses.append(c)
+    if not courses:  # everything was a 0-credit exemption; keep for context
+        courses = extract_courses(award)
+    return courses, float(total)
 
 
 class UGAScraper(BaseScraper):
