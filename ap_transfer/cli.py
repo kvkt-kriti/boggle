@@ -58,14 +58,27 @@ def _fmt_courses(courses: list[str], award: str) -> str:
 
 def _cmd_recommend(args: argparse.Namespace) -> int:
     rows = _load_or_exit()
-    recs = advisor.recommend(
-        rows, args.school, subject=args.subject, expected_score=args.score
-    )
+    try:
+        recs = advisor.recommend(
+            rows,
+            args.school,
+            subject=args.subject,
+            major=args.major,
+            expected_score=args.score,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     if not recs:
         print("No matching AP exams found.")
         return 0
     name = recs[0].school_name
     header = f"AP exams worth taking for {name} ({args.school.upper()})"
+    if args.major:
+        from .majors import get_major
+
+        maj = get_major(args.major)
+        header += f" — major: {maj.name if maj else args.major}"
     if args.subject:
         header += f" — subject filter: '{args.subject}'"
     if args.score:
@@ -81,6 +94,15 @@ def _cmd_recommend(args: argparse.Namespace) -> int:
         )
     source = next((r.source_url for r in rows if r.school == args.school.upper()), "")
     print(f"\n  {len(recs)} exam(s). Source: {source}")
+    return 0
+
+
+def _cmd_majors(args: argparse.Namespace) -> int:
+    from .majors import list_majors
+
+    print("Majors you can pass to recommend --major:\n")
+    for m in list_majors():
+        print(f"  {m.id:20} {m.name}")
     return 0
 
 
@@ -123,12 +145,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     sr = sub.add_parser("recommend", help="Recommend AP exams for a school")
     sr.add_argument("--school", required=True, help="School code, e.g. UF")
-    sr.add_argument("--subject", help="Filter by subject/major keyword, e.g. 'math'")
+    sr.add_argument("--subject", help="Filter by subject keyword, e.g. 'math'")
+    sr.add_argument(
+        "--major",
+        help="Major id (computer_science, engineering, biology, …) for tailored recs",
+    )
     sr.add_argument(
         "--score", type=int, choices=[1, 2, 3, 4, 5],
         help="The AP score you expect to earn; shows only awards you'd qualify for",
     )
     sr.set_defaults(func=_cmd_recommend)
+
+    sm = sub.add_parser("majors", help="List majors the advisor understands")
+    sm.set_defaults(func=_cmd_majors)
 
     se = sub.add_parser("exam", help="Compare one AP exam across all schools")
     se.add_argument("exam", help="AP exam name, e.g. 'Calculus BC'")

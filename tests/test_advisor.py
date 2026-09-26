@@ -5,16 +5,18 @@ from __future__ import annotations
 import pathlib
 
 from ap_transfer import advisor
-from ap_transfer.scrapers import all_scrapers
+from ap_transfer.scrapers import get_scraper
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
+# Original six schools with dedicated fixtures (used for advisor integration).
 _FILE = {"UF": "uf", "UGA": "uga", "TAMU": "tamu", "GT": "gatech", "RU": "rutgers", "UMN": "umn"}
 
 
 def _all_rows():
     rows = []
-    for sc in all_scrapers():
-        html = (FIX / f"{_FILE[sc.code]}.html").read_text(encoding="utf-8")
+    for code, stem in _FILE.items():
+        sc = get_scraper(code)
+        html = (FIX / f"{stem}.html").read_text(encoding="utf-8")
         rows.extend(sc.parse(html))
     return rows
 

@@ -30,12 +30,17 @@ def fetch(url: str, *, timeout: int = 30, retries: int = 4) -> str:
 
     Raises :class:`FetchError` on a non-200 response or repeated failure.
     """
+    return fetch_bytes(url, timeout=timeout, retries=retries).decode("utf-8", errors="replace")
+
+
+def fetch_bytes(url: str, *, timeout: int = 30, retries: int = 4) -> bytes:
+    """GET ``url`` and return raw response bytes, retrying with backoff."""
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
             resp = requests.get(url, headers=_HEADERS, timeout=timeout)
             if resp.status_code == 200:
-                return resp.text
+                return resp.content
             last_exc = FetchError(f"HTTP {resp.status_code} for {url}")
         except requests.RequestException as exc:  # network-level failure
             last_exc = exc
