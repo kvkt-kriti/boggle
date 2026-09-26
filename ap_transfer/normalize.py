@@ -121,9 +121,9 @@ _COURSE_RE = re.compile(
     r"""(?:
         \d{2}:\d{3}:\d{3}          # Rutgers 01:640:151
         |
-        [A-Z]{2,5}\s?\d{3,4}[A-Za-z]?   # MAC 2311, BSC 2005L, ARTS 149
+        [A-Z]{2,5}\s?\d{3,5}[A-Za-z]?   # MAC 2311, BIOL 11000, ARTS 149
         |
-        [A-Z]{2,5}\s?\d[A-Z]{2,4}\d?    # HTS 1XXX style blanket credit
+        [A-Z]{2,5}\s?\d[A-Z]{2,4}\d?    # HTS 1XXX / AAS 1XUND style
     )""",
     re.VERBOSE,
 )
@@ -149,8 +149,8 @@ def _densify(text: str, subject_pattern: str) -> str:
     "(8 credits)" untouched.
     """
     pat = re.compile(
-        rf"({subject_pattern})\s?(\d{{3,4}}[A-Za-z]?)"
-        rf"((?:\s*(?:,|and|&)\s*\d{{2,4}}[A-Za-z]?)+)"
+        rf"({subject_pattern})\s?(\d{{3,5}}[A-Za-z]?)"
+        rf"((?:\s*(?:,|and|&)\s*\d{{2,5}}[A-Za-z]?)+)"
     )
 
     def repl(m: "re.Match[str]") -> str:

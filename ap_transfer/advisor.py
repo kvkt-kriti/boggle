@@ -44,19 +44,44 @@ def recommend(
     school: str,
     *,
     subject: str | None = None,
+    major: str | None = None,
     expected_score: int | None = None,
 ) -> list[Recommendation]:
-    """Recommend AP exams worth taking for a school (optionally by subject).
+    """Recommend AP exams worth taking for a school (optionally by subject/major).
 
     Results are grouped per AP exam and ranked by the credit hours awarded, so a
     student sees the highest-value exams first. When ``expected_score`` is given,
     only awards a student could earn at that score (i.e. requiring that score or
     lower) are considered.
+
+    ``major`` is a major id from :mod:`ap_transfer.majors`. Priority exams for
+    that major are sorted first, then remaining credit-bearing exams matched by
+    subject keywords.
     """
     school = school.upper()
     pool = [r for r in rows if r.school == school]
+
+    major_obj = None
+    if major:
+        from .majors import get_major
+
+        major_obj = get_major(major)
+        if major_obj is None:
+            raise ValueError(f"Unknown major id: {major!r}")
+
     if subject:
         pool = [r for r in pool if _matches_subject(r, subject)]
+    elif major_obj is not None:
+        # Keep rows that match any major keyword OR are a priority exam.
+        priority = {e.lower() for e in major_obj.priority_exams}
+        filtered = []
+        for r in pool:
+            if r.ap_exam.lower() in priority or any(
+                _matches_subject(r, kw) for kw in major_obj.keywords
+            ):
+                filtered.append(r)
+        pool = filtered
+
     if expected_score is not None:
         pool = [r for r in pool if r.score <= expected_score]
 
@@ -82,7 +107,17 @@ def recommend(
                 school_name=best.school_name,
             )
         )
-    recs.sort(key=lambda r: (-(r.best_credits or 0), r.ap_exam))
+
+    if major_obj is not None:
+        priority_order = {e: i for i, e in enumerate(major_obj.priority_exams)}
+
+        def sort_key(r: Recommendation) -> tuple:
+            pri = priority_order.get(r.ap_exam, 1000)
+            return (pri, -(r.best_credits or 0), r.ap_exam)
+
+        recs.sort(key=sort_key)
+    else:
+        recs.sort(key=lambda r: (-(r.best_credits or 0), r.ap_exam))
     return recs
 
 
