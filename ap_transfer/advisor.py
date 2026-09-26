@@ -121,6 +121,125 @@ def recommend(
     return recs
 
 
+@dataclass
+class AwardTier:
+    """The best published award at one AP score."""
+
+    score: int
+    courses: list[str]
+    credits: float | None
+    award_raw: str
+
+
+@dataclass
+class PlanExam:
+    """One AP exam on a student's plan, with every real score tier."""
+
+    ap_exam: str
+    relevance: str  # core | strong | elective
+    tiers: list[AwardTier]
+    source_url: str
+
+    @property
+    def floor(self) -> AwardTier:
+        """Award guaranteed at the lowest qualifying score."""
+        return self.tiers[0]
+
+
+def _credited(group: list[Equivalency]) -> list[Equivalency]:
+    return [g for g in group if g.courses or (g.credits or 0) > 0]
+
+
+def _best_row(rows: list[Equivalency]) -> Equivalency:
+    def key(g: Equivalency) -> tuple:
+        # Prefer a real course code over a blanket "1XXX" placeholder when
+        # the school publishes both for the same score.
+        concrete = sum(1 for c in g.courses if "X" not in c.upper())
+        return (g.credits or 0, concrete, len(g.courses), -g.score)
+
+    return max(rows, key=key)
+
+
+def build_plan(
+    rows: list[Equivalency],
+    school: str,
+    major: str,
+    *,
+    expected_score: int | None = None,
+) -> list[PlanExam]:
+    """Build a major-specific AP plan from scraped equivalencies.
+
+    Each exam keeps one award per published score. The floor tier is the award
+    at the lowest qualifying score, so "score N+" never claims courses that
+    only unlock at a higher score. When ``expected_score`` is set, tiers above
+    that score are dropped and the remaining best award is what that score
+    actually earns.
+    """
+    from .majors import get_major
+
+    major_obj = get_major(major)
+    if major_obj is None:
+        raise ValueError(f"Unknown major id: {major!r}")
+
+    school = school.upper()
+    priority = list(major_obj.priority_exams)
+    priority_l = {e.lower(): i for i, e in enumerate(priority)}
+    pool = [r for r in rows if r.school == school]
+    pool = [
+        r
+        for r in pool
+        if r.ap_exam.lower() in priority_l
+        or any(_matches_subject(r, kw) for kw in major_obj.keywords)
+    ]
+
+    by_exam: dict[str, list[Equivalency]] = defaultdict(list)
+    for r in pool:
+        by_exam[r.ap_exam].append(r)
+
+    plans: list[PlanExam] = []
+    for exam, group in by_exam.items():
+        credited = _credited(group)
+        if expected_score is not None:
+            credited = [g for g in credited if g.score <= expected_score]
+        if not credited:
+            continue
+        by_score: dict[int, list[Equivalency]] = defaultdict(list)
+        for g in credited:
+            by_score[g.score].append(g)
+        tiers = []
+        for score in sorted(by_score):
+            best = _best_row(by_score[score])
+            tiers.append(
+                AwardTier(
+                    score=score,
+                    courses=list(best.courses),
+                    credits=best.credits,
+                    award_raw=best.award_raw,
+                )
+            )
+        if exam.lower() in priority_l and priority_l[exam.lower()] < 3:
+            relevance = "core"
+        elif exam.lower() in priority_l:
+            relevance = "strong"
+        else:
+            relevance = "elective"
+        source = next((g.source_url for g in credited if g.source_url), "")
+        source = source.split(" (fixture")[0]
+        plans.append(
+            PlanExam(ap_exam=exam, relevance=relevance, tiers=tiers, source_url=source)
+        )
+
+    rank = {"core": 0, "strong": 1, "elective": 2}
+
+    def sort_key(p: PlanExam) -> tuple:
+        pri = priority_l.get(p.ap_exam.lower(), 1000)
+        top = max((t.credits or 0) for t in p.tiers)
+        return (rank[p.relevance], pri, -top, p.ap_exam)
+
+    plans.sort(key=sort_key)
+    return plans
+
+
 def compare_exam(rows: list[Equivalency], exam_query: str) -> dict[str, list[Equivalency]]:
     """For one AP exam, return the award(s) at each school (keyed by school code)."""
     from .normalize import normalize_exam
