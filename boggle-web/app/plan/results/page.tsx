@@ -8,6 +8,7 @@ import { ChatDrawer } from "@/components/ChatDrawer";
 import { Logo } from "@/components/Logo";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { fetchRecommend, type RecommendResponse } from "@/lib/api";
+import type { StudentPlanContext } from "@/lib/mock-chat";
 import { loadMajor, loadSchool } from "@/lib/plan-storage";
 
 function schoolShortName(name: string, code: string): string {
@@ -28,6 +29,7 @@ export default function ResultsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [majorName, setMajorName] = useState("Your major");
+  const [majorId, setMajorId] = useState("");
 
   useEffect(() => {
     const school = loadSchool();
@@ -37,6 +39,7 @@ export default function ResultsPage() {
       return;
     }
     setMajorName(major.name);
+    setMajorId(major.id);
     fetchRecommend({ school: school.code, major: major.id })
       .then((data) => {
         setPlan(data);
@@ -55,12 +58,31 @@ export default function ResultsPage() {
 
   const displaySchool = shortSchool || plan?.school_name || "";
 
+  const planContext: StudentPlanContext | null = useMemo(() => {
+    if (!plan) return null;
+    return {
+      schoolCode: plan.school,
+      schoolName: displaySchool || plan.school_name,
+      majorId: majorId || plan.major?.id || "",
+      majorName: majorName,
+      totalCredits: plan.total_credits,
+      examCount: plan.exam_count,
+      recommendations: plan.recommendations.map((r) => ({
+        ap_exam: r.ap_exam,
+        best_credits: r.best_credits,
+        min_score: r.min_score,
+        courses: r.courses,
+        fit: r.fit,
+      })),
+    };
+  }, [plan, displaySchool, majorId, majorName]);
+
   return (
     <main className="min-h-screen bg-cream">
       <div className="mx-auto max-w-3xl px-6 py-6 md:px-8">
-        <nav className="no-print mb-10 flex items-center justify-between gap-4">
+        <nav className="no-print mb-10 flex flex-wrap items-center justify-between gap-3">
           <Logo />
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => window.print()}
@@ -137,12 +159,12 @@ export default function ResultsPage() {
         ) : null}
       </div>
 
-      {plan ? (
+      {plan && planContext ? (
         <>
           <button
             type="button"
             onClick={() => setChatOpen(true)}
-            className="no-print fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-forest px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-cream-soft shadow-lg hover:bg-forest-mid"
+            className="no-print fixed bottom-5 right-4 z-30 inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full bg-forest px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-soft shadow-lg hover:bg-forest-mid sm:bottom-6 sm:right-6 sm:px-5 sm:text-[12px]"
           >
             <span aria-hidden>✦</span>
             Ask about my plan
@@ -150,10 +172,7 @@ export default function ResultsPage() {
           <ChatDrawer
             open={chatOpen}
             onClose={() => setChatOpen(false)}
-            majorName={majorName}
-            schoolName={displaySchool}
-            recommendations={plan.recommendations}
-            totalCredits={plan.total_credits}
+            planContext={planContext}
           />
         </>
       ) : null}

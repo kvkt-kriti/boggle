@@ -1,31 +1,27 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { CHAT_SUGGESTIONS, mockChatReply } from "@/lib/mock-chat";
-import type { Recommendation } from "@/lib/api";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CHAT_SUGGESTIONS,
+  mockChatReply,
+  type StudentPlanContext,
+} from "@/lib/mock-chat";
 
 type Message = { role: "user" | "assistant"; text: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  majorName: string;
-  schoolName: string;
-  recommendations: Recommendation[];
-  totalCredits: number;
+  planContext: StudentPlanContext;
 };
 
-export function ChatDrawer({
-  open,
-  onClose,
-  majorName,
-  schoolName,
-  recommendations,
-  totalCredits,
-}: Props) {
+export function ChatDrawer({ open, onClose, planContext }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Stable context object for future AI wiring (school, major, ranked plan).
+  const context = useMemo(() => planContext, [planContext]);
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,12 +30,7 @@ export function ChatDrawer({
   function ask(question: string) {
     const trimmed = question.trim();
     if (!trimmed) return;
-    const reply = mockChatReply(trimmed, {
-      majorName,
-      schoolName,
-      recommendations,
-      totalCredits,
-    });
+    const reply = mockChatReply(trimmed, context);
     setMessages((prev) => [
       ...prev,
       { role: "user", text: trimmed },
@@ -68,6 +59,8 @@ export function ChatDrawer({
         }`}
         aria-hidden={!open}
         aria-label="Ask Boggle"
+        data-school={context.schoolCode}
+        data-major={context.majorId}
       >
         <header className="flex items-start justify-between gap-3 bg-forest px-5 py-4 text-cream-soft">
           <div>
@@ -78,7 +71,7 @@ export function ChatDrawer({
               <h2 className="font-display text-xl">Ask Boggle</h2>
             </div>
             <p className="mt-2 label-caps text-cream-soft/70">
-              {majorName} · {schoolName}
+              {context.majorName} · {context.schoolName}
             </p>
           </div>
           <button
@@ -93,8 +86,8 @@ export function ChatDrawer({
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           <p className="text-[14px] leading-relaxed text-ink-muted">
-            I work only from {schoolName}&apos;s published AP credit chart for{" "}
-            {majorName}. Ask me anything about your ranked plan.
+            I work only from {context.schoolName}&apos;s published AP credit chart
+            for {context.majorName}. Ask me anything about your ranked plan.
           </p>
 
           {messages.length === 0 ? (
@@ -118,7 +111,7 @@ export function ChatDrawer({
                   className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-[14px] leading-relaxed ${
                     m.role === "user"
                       ? "ml-auto bg-forest text-cream-soft"
-                      : "bg-white text-ink border border-forest/10"
+                      : "border border-forest/10 bg-white text-ink"
                   }`}
                 >
                   {m.text}

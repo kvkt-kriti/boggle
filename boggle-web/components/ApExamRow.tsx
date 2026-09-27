@@ -24,23 +24,25 @@ export function ApExamRow({ rank, rec, expanded, onToggle, schoolShort }: Props)
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start gap-4 text-left md:gap-6"
+        className="flex w-full items-start gap-3 text-left sm:gap-4 md:gap-6"
         aria-expanded={expanded}
       >
-        <span className="w-10 shrink-0 font-display text-2xl text-gold md:w-12 md:text-3xl">
+        <span className="w-8 shrink-0 font-display text-xl text-gold sm:w-10 sm:text-2xl md:w-12 md:text-3xl">
           {String(rank).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h3 className="font-display text-xl text-forest md:text-2xl">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <h3 className="font-display text-lg text-forest sm:text-xl md:text-2xl">
               AP {rec.ap_exam}
             </h3>
             <FitBadge fit={rec.fit} />
           </div>
-          <p className="mt-1.5 text-[14px] text-ink-muted">{awardLine(rec)}</p>
+          <p className="mt-1.5 break-words text-[13px] text-ink-muted sm:text-[14px]">
+            {awardLine(rec)}
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 pt-1">
-          <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink">
+        <div className="flex shrink-0 items-center gap-1.5 pt-1 sm:gap-2">
+          <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.12em] text-ink sm:text-[12px]">
             {credits} credits
           </span>
           <span

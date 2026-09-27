@@ -5,24 +5,30 @@ export const CHAT_SUGGESTIONS = [
   "Which of these are optional?",
 ] as const;
 
-type PlanContext = {
-  majorName: string;
+/** Student plan payload for chat (mock now; ready for a future AI API). */
+export type StudentPlanContext = {
+  schoolCode: string;
   schoolName: string;
+  majorId: string;
+  majorName: string;
+  totalCredits: number;
+  examCount: number;
   recommendations: {
     ap_exam: string;
     best_credits: number | null;
+    min_score: number;
+    courses: string[];
     fit: string;
   }[];
-  totalCredits: number;
 };
 
-function topByCredits(ctx: PlanContext, n: number) {
+function topByCredits(ctx: StudentPlanContext, n: number) {
   return [...ctx.recommendations]
     .sort((a, b) => (b.best_credits ?? 0) - (a.best_credits ?? 0))
     .slice(0, n);
 }
 
-export function mockChatReply(question: string, ctx: PlanContext): string {
+export function mockChatReply(question: string, ctx: StudentPlanContext): string {
   const q = question.toLowerCase();
   const top = topByCredits(ctx, 4);
   const school = ctx.schoolName;
@@ -84,7 +90,7 @@ export function mockChatReply(question: string, ctx: PlanContext): string {
   }
 
   return [
-    `I can help you read your ranked ${major} plan for ${school} (about ${ctx.totalCredits} credit hours across ${ctx.recommendations.length} exams).`,
+    `I can help you read your ranked ${major} plan for ${school} (about ${ctx.totalCredits} credit hours across ${ctx.examCount} exams).`,
     "",
     "Try a suggestion chip, or ask which exams give the most credit. I only use mock replies grounded in your current plan — not a live AI model.",
   ].join("\n");
