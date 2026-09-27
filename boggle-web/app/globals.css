@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #f7f4eb;
+  --cream-soft: #fcfaf4;
+  --cream-deep: #ebe6d8;
+  --forest: #1a3a32;
+  --forest-mid: #2a5248;
+  --forest-soft: #879b8c;
+  --forest-muted: #d5ddd6;
+  --gold: #b08d4f;
+  --gold-soft: #e8dcc3;
+  --ink: #1c2421;
+  --ink-muted: #5c6662;
+  --ink-faint: #8a928e;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--ink);
+  background: var(--cream);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer utilities {
+  .label-caps {
+    @apply text-[11px] font-medium uppercase tracking-[0.18em];
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .print-break {
+    break-inside: avoid;
+  }
+}

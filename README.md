@@ -1,9 +1,26 @@
-# Minerva — AP Credit Transfer Advisor
+# Boggle — AP Credit Transfer Advisor
 
 A Python web scraper and query tool that collects **AP exam credit
 equivalencies** published by top public US universities and helps students
 decide which AP courses to take in high school based on the school they want to
 attend and the subject area of their intended major.
+
+## Web app
+
+The **Boggle** UI lives in `boggle-web/` (Next.js) and talks to a thin FastAPI
+wrapper in `boggle_api/` that calls the existing `ap_transfer` advisor (real
+`data/ap_equivalencies.json` — no duplicated recommend logic in JS).
+
+```bash
+# API (repo root)
+pip install -r requirements.txt -r boggle_api/requirements.txt
+python -m uvicorn boggle_api.main:app --reload --port 8000
+
+# Web (separate terminal)
+cd boggle-web && cp .env.example .env.local && npm install && npm run dev
+```
+
+See `boggle-web/README.md` for deploy notes (`NEXT_PUBLIC_API_URL`, CORS).
 
 For each university it answers: *"If I score X on AP exam Y, which specific
 course(s) will I get credit for, and how many credit hours?"*
